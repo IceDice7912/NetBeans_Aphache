@@ -5,12 +5,22 @@
  */
 package my.jes.ai;
 
+import com.mulcam.ai.web.vo.ProductVO;
 import java.awt.Dimension;
-import java.awt.Label;
 import java.awt.Point;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.DataOutputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLEncoder;
 import java.util.Enumeration;
 import java.util.Hashtable;
-import java.util.Vector;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javafx.application.Platform;
 import javafx.embed.swing.JFXPanel;
 import javafx.scene.Group;
@@ -20,7 +30,6 @@ import javafx.scene.web.WebView;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.SwingWorker;
 import javax.swing.table.DefaultTableModel;
@@ -28,6 +37,8 @@ import javax.swing.table.TableModel;
 import my.jes.ai.engine.STT;
 import my.jes.ai.engine.TTS;
 import my.jes.ai.engine.VoiceOrders;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 /**
  *
@@ -35,6 +46,13 @@ import my.jes.ai.engine.VoiceOrders;
  */
 public class CafeUi extends javax.swing.JFrame {
     
+    String apiURL = "http://221.163.125.220:8090/order2.jes";
+    final String [] COLUMN_NAMES={"품명","수량"};
+    String [][]data={{"",""}};
+    TableModel dataModel=null;
+    Hashtable<String,Integer> basket=new Hashtable();
+    int count=0;
+    STT stt;
     JFXPanel fxPanel;
 
     /**
@@ -42,48 +60,12 @@ public class CafeUi extends javax.swing.JFrame {
      */
     public CafeUi() {
         initComponents();
-        setUi();
+        setBasketUi();
+        stt=new STT(this);
         startAI();
         initFX();
     }
-    
-        private void startAI() {
-        VoiceOrders.process("영업해요?");
-    }
-        
-        private void initAndLoadWebView(final JFXPanel fxPanel) {
-	Group group = new Group();
-	Scene scene = new Scene(group);
-	fxPanel.setScene(scene);
-	WebView webView = new WebView();
-	group.getChildren().add(webView);
-	webView.setMinSize(300, 300);
-	webView.setMaxSize(300, 300);
-	WebEngine webEngine = webView.getEngine();
 
-	webEngine.load("file:///C:/Users/dice7/Documents/NetBeans_Aphache/AI_Cafe_Maven/index.html");
-}
-
-
-        private void initFX() {
-	JFrame frame = new JFrame("FX");
-	//frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-	frame.getContentPane().setLayout(null);
-	final JButton jButton = new JButton("취소");
-	fxPanel = new JFXPanel();
-	frame.add(jButton);
-	frame.add(fxPanel);
-//	frame.setVisible(true);
-	jButton.setSize(new Dimension(200, 27));
-	fxPanel.setSize(new Dimension(300, 300));
-	fxPanel.setLocation(new Point(0, 27));
-	frame.getContentPane().setPreferredSize(new Dimension(300, 327));
-	frame.pack();
-	frame.setResizable(false);
-}
-
-
-    
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -188,6 +170,7 @@ public class CafeUi extends javax.swing.JFrame {
         jTable1 = new javax.swing.JTable();
         jButton37 = new javax.swing.JButton();
         jButton38 = new javax.swing.JButton();
+        jButton39 = new javax.swing.JButton();
         jLabel5 = new javax.swing.JLabel();
         jLabel8 = new javax.swing.JLabel();
 
@@ -257,14 +240,29 @@ public class CafeUi extends javax.swing.JFrame {
         jTextField2.setBounds(237, 117, 30, 30);
 
         jButton3.setText("+");
+        jButton3.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton3ActionPerformed(evt);
+            }
+        });
         jPanel5.add(jButton3);
         jButton3.setBounds(270, 120, 50, 23);
 
         jButton4.setText("-");
+        jButton4.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton4ActionPerformed(evt);
+            }
+        });
         jPanel5.add(jButton4);
         jButton4.setBounds(320, 120, 37, 23);
 
         jButton10.setText("장바구니 담기");
+        jButton10.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton10ActionPerformed(evt);
+            }
+        });
         jPanel5.add(jButton10);
         jButton10.setBounds(240, 160, 120, 23);
 
@@ -277,7 +275,7 @@ public class CafeUi extends javax.swing.JFrame {
         jPanel6.add(jLabel3);
         jLabel3.setBounds(0, 0, 230, 230);
 
-        jLabel11.setText("아이스 라떼");
+        jLabel11.setText("아이스 카페라떼");
         jPanel6.add(jLabel11);
         jLabel11.setBounds(240, 90, 110, 14);
 
@@ -304,6 +302,11 @@ public class CafeUi extends javax.swing.JFrame {
         jButton6.setBounds(320, 120, 37, 23);
 
         jButton11.setText("장바구니 담기");
+        jButton11.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton11ActionPerformed(evt);
+            }
+        });
         jPanel6.add(jButton11);
         jButton11.setBounds(240, 160, 120, 23);
 
@@ -316,7 +319,7 @@ public class CafeUi extends javax.swing.JFrame {
         jPanel7.add(jLabel4);
         jLabel4.setBounds(0, 0, 220, 210);
 
-        jLabel12.setText("핫 라떼");
+        jLabel12.setText("핫 카페라떼");
         jPanel7.add(jLabel12);
         jLabel12.setBounds(240, 90, 110, 14);
 
@@ -325,14 +328,29 @@ public class CafeUi extends javax.swing.JFrame {
         jTextField4.setBounds(237, 117, 30, 30);
 
         jButton7.setText("+");
+        jButton7.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton7ActionPerformed(evt);
+            }
+        });
         jPanel7.add(jButton7);
         jButton7.setBounds(270, 120, 50, 23);
 
         jButton8.setText("-");
+        jButton8.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton8ActionPerformed(evt);
+            }
+        });
         jPanel7.add(jButton8);
         jButton8.setBounds(320, 120, 37, 23);
 
         jButton12.setText("장바구니 담기");
+        jButton12.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton12ActionPerformed(evt);
+            }
+        });
         jPanel7.add(jButton12);
         jButton12.setBounds(240, 160, 120, 23);
 
@@ -352,20 +370,10 @@ public class CafeUi extends javax.swing.JFrame {
         jTextField5.setBounds(237, 117, 30, 30);
 
         jButton13.setText("+");
-        jButton13.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton13ActionPerformed(evt);
-            }
-        });
         jPanel8.add(jButton13);
         jButton13.setBounds(270, 120, 50, 23);
 
         jButton14.setText("-");
-        jButton14.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton14ActionPerformed(evt);
-            }
-        });
         jPanel8.add(jButton14);
         jButton14.setBounds(320, 120, 37, 23);
 
@@ -374,11 +382,6 @@ public class CafeUi extends javax.swing.JFrame {
         jLabel14.setBounds(240, 90, 110, 14);
 
         jButton15.setText("장바구니 담기");
-        jButton15.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton15ActionPerformed(evt);
-            }
-        });
         jPanel8.add(jButton15);
         jButton15.setBounds(240, 160, 120, 23);
 
@@ -479,20 +482,10 @@ public class CafeUi extends javax.swing.JFrame {
         jTextField9.setBounds(237, 117, 30, 30);
 
         jButton25.setText("+");
-        jButton25.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton25ActionPerformed(evt);
-            }
-        });
         jPanel13.add(jButton25);
         jButton25.setBounds(270, 120, 50, 23);
 
         jButton26.setText("-");
-        jButton26.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton26ActionPerformed(evt);
-            }
-        });
         jPanel13.add(jButton26);
         jButton26.setBounds(320, 120, 37, 23);
 
@@ -501,11 +494,6 @@ public class CafeUi extends javax.swing.JFrame {
         jLabel22.setBounds(240, 90, 110, 14);
 
         jButton27.setText("장바구니 담기");
-        jButton27.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton27ActionPerformed(evt);
-            }
-        });
         jPanel13.add(jButton27);
         jButton27.setBounds(240, 160, 120, 23);
 
@@ -644,12 +632,20 @@ public class CafeUi extends javax.swing.JFrame {
         jPanel17.add(jButton38);
         jButton38.setBounds(170, 440, 100, 23);
 
+        jButton39.setText("주문 초기화");
+        jButton39.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton39ActionPerformed(evt);
+            }
+        });
+        jPanel17.add(jButton39);
+        jButton39.setBounds(180, 20, 110, 30);
+
         jLabel5.setFont(new java.awt.Font("휴먼옛체", 1, 36)); // NOI18N
         jLabel5.setForeground(new java.awt.Color(102, 51, 0));
         jLabel5.setText("AI Cafe");
 
         jLabel8.setBackground(new java.awt.Color(255, 255, 255));
-        jLabel8.setIcon(new javax.swing.ImageIcon("C:\\Users\\dice7\\Documents\\NetBeans_Aphache\\AI_Cafe_Maven\\img\\mic.png")); // NOI18N
         jLabel8.setText("\"커피주문\" 혹은 \"케익주문\"이라고 말해보세요");
         jLabel8.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
@@ -669,29 +665,29 @@ public class CafeUi extends javax.swing.JFrame {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jPanel17, javax.swing.GroupLayout.PREFERRED_SIZE, 322, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(layout.createSequentialGroup()
-                        .addGap(425, 425, 425)
+                        .addGap(333, 333, 333)
                         .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 152, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(87, 87, 87)
-                        .addComponent(jLabel8)))
+                        .addGap(39, 39, 39)
+                        .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 339, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addContainerGap(32, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel5)
-                    .addComponent(jLabel8))
-                .addGap(20, 20, 20)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(jLabel8, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jLabel5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGap(18, 18, 18)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addComponent(jPanel17, javax.swing.GroupLayout.PREFERRED_SIZE, 486, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(165, Short.MAX_VALUE))
+                .addContainerGap(194, Short.MAX_VALUE))
         );
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
-    
+        
     
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
         // 아이스 아메리카노 수량 +
@@ -702,70 +698,13 @@ public class CafeUi extends javax.swing.JFrame {
         // 아이스 아메리카노 수량 -
         if(Integer.parseInt(jTextField1.getText())>0){
             jTextField1.setText(Integer.parseInt(jTextField1.getText())-1+"");
-        }
-        
+        }        
     }//GEN-LAST:event_jButton2ActionPerformed
 
     private void jButton9ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton9ActionPerformed
-        // 아이스 아메리카노 담기
-        if(Integer.parseInt(jTextField1.getText())>0){
-            Integer amount=basket.get("아이스 아메리카노");
-            if(amount==null){
-              amount=Integer.parseInt(jTextField1.getText());  
-            }else{
-               amount+=Integer.parseInt(jTextField1.getText());
-            }
-           
-            basket.put("아이스 아메리카노", amount);
-            Enumeration<String> keys=basket.keys();
-            data=new String[basket.size()][2];
-            int i=0;
-            while(keys.hasMoreElements()){
-                String key=keys.nextElement();
-                Integer value=basket.get(key);
-                data[i][0]=key;
-                data[i][1]=value+"";                
-                i++;
-            }
-            dataModel=new DefaultTableModel(data, COLUMN_NAMES);
-            jTable1.setModel(dataModel);
-        }else{
-            JOptionPane.showMessageDialog(this, "수량을 입력하세요");
-        }
+        // 아이스 아메리카노 담기        
+        basket(jLabel9.getText().trim(),Integer.parseInt(jTextField1.getText().trim()));
     }//GEN-LAST:event_jButton9ActionPerformed
-public void setUi(){   
-   dataModel=new DefaultTableModel(data, COLUMN_NAMES);
-   jTable1.setModel(dataModel);   
-}
-
-final String [] COLUMN_NAMES={"품명","수량"};
-String [][]data={{"",""}};
-TableModel dataModel=null;
-Hashtable<String,Integer> basket=new Hashtable();
-
-    private void jButton13ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton13ActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_jButton13ActionPerformed
-
-    private void jButton14ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton14ActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_jButton14ActionPerformed
-
-    private void jButton15ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton15ActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_jButton15ActionPerformed
-
-    private void jButton25ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton25ActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_jButton25ActionPerformed
-
-    private void jButton26ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton26ActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_jButton26ActionPerformed
-
-    private void jButton27ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton27ActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_jButton27ActionPerformed
 
     private void jButton37ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton37ActionPerformed
         // 주문 버튼
@@ -780,58 +719,84 @@ Hashtable<String,Integer> basket=new Hashtable();
             i++;
         }
         msg += "\n위와 같이 주문하시겠습니까?";
-        JOptionPane.showMessageDialog(this, msg);
+        int selectNo=JOptionPane.showConfirmDialog(this, msg);
+        switch(selectNo){
+            case 0: order();//예
+                break;
+            case 1: //아니오
+                break;
+            case 2://취소
+                break;
+            default://기타
+        }
     }//GEN-LAST:event_jButton37ActionPerformed
 
-    int count=0;
+    
     private void jButton5ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton5ActionPerformed
-        jTextField3.setText(++count+"");
+        //아이스 카페라떼 수량 +        
+        jTextField3.setText(Integer.parseInt(jTextField3.getText())+1+"");
     }//GEN-LAST:event_jButton5ActionPerformed
 
     private void jButton6ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton6ActionPerformed
-      if(count>0){
-        jTextField3.setText(--count+"");
-      }
+        //아이스 카페라떼 수량 -   
+        if(Integer.parseInt(jTextField3.getText())>0){
+            jTextField3.setText(Integer.parseInt(jTextField3.getText())-1+"");
+        } 
     }//GEN-LAST:event_jButton6ActionPerformed
-
+   
     private void jLabel8MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jLabel8MouseClicked
-       
-        System.out.println("음성인식 버튼을 눌렀습니다. 음성인식을 시작합니다.");
         
-// 음성인식      
-                jLabel8.setIcon(new ImageIcon("img\\sound2.gif"));  
-                            new MyWorker().execute();  
-        String stt=STT.process();
-        System.out.println("==="+stt);
-       //주문
-       VoiceOrders.process(stt);
-       jLabel8.setIcon(new ImageIcon("img\\mic2.png"));
+            // 음성인식
+            jLabel8.setIcon(new ImageIcon("img\\sound2.gif"));
+            new MyWorker().execute();        
+        
     }//GEN-LAST:event_jLabel8MouseClicked
 
+    private void jButton39ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton39ActionPerformed
+        reset();
+    }//GEN-LAST:event_jButton39ActionPerformed
+
+    private void jButton10ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton10ActionPerformed
+        // 핫 아메리카노 담기
+        basket(jLabel10.getText().trim(),Integer.parseInt(jTextField2.getText().trim()));
+    }//GEN-LAST:event_jButton10ActionPerformed
+
+    private void jButton11ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton11ActionPerformed
+        // 아이스 카페라떼 담기
+        basket(jLabel11.getText().trim(),Integer.parseInt(jTextField3.getText().trim()));
+    }//GEN-LAST:event_jButton11ActionPerformed
+
+    private void jButton12ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton12ActionPerformed
+        // 핫 카페라떼 담기
+        basket(jLabel12.getText().trim(),Integer.parseInt(jTextField4.getText().trim()));
+    }//GEN-LAST:event_jButton12ActionPerformed
+
+    private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
+        // 핫 아메리카노 수량 +
+        jTextField2.setText(Integer.parseInt(jTextField2.getText())+1+"");
+    }//GEN-LAST:event_jButton3ActionPerformed
+
+    private void jButton4ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton4ActionPerformed
+        // 핫 아메리카노 수량 -
+        if(Integer.parseInt(jTextField2.getText())>0){
+            jTextField2.setText(Integer.parseInt(jTextField2.getText())-1+"");
+        }
+    }//GEN-LAST:event_jButton4ActionPerformed
+
+    private void jButton7ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton7ActionPerformed
+        // 핫 카페라떼 수량 +
+        jTextField4.setText(Integer.parseInt(jTextField4.getText())+1+"");
+    }//GEN-LAST:event_jButton7ActionPerformed
+
+    private void jButton8ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton8ActionPerformed
+        // 핫 카페라떼 수량 -
+        if(Integer.parseInt(jTextField4.getText())>0){
+            jTextField4.setText(Integer.parseInt(jTextField4.getText())-1+"");
+        }
+    }//GEN-LAST:event_jButton8ActionPerformed
+
+
  
-    class MyWorker extends SwingWorker{      //여기가 AI의 핵심 코드임.     
-            @Override
-            public String doInBackground() {   
-                String stt=STT.process(); //음성인식 호출 (사용자의 음성 인식 -> 텍스트로 바꿈)
-                System.out.println("니가 한 말===" + stt);             
-                String chatbotMsg = VoiceOrders.process(stt);            //챗봇 호출
-                TTS.process(chatbotMsg);    // 음성 합성
-                return "";
-            }
-
-            @Override
-            protected void done() {                
-                jLabel8.setIcon(new ImageIcon("img\\mic.png"));   
-                                Platform.runLater(new Runnable() {
-                    public void run() {
-                            initAndLoadWebView(fxPanel);
-                    }
-                });    
-            }
-    }    
-
-    
-    
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButton1;
@@ -866,6 +831,7 @@ Hashtable<String,Integer> basket=new Hashtable();
     private javax.swing.JButton jButton36;
     private javax.swing.JButton jButton37;
     private javax.swing.JButton jButton38;
+    private javax.swing.JButton jButton39;
     private javax.swing.JButton jButton4;
     private javax.swing.JButton jButton5;
     private javax.swing.JButton jButton6;
@@ -933,9 +899,157 @@ Hashtable<String,Integer> basket=new Hashtable();
     private javax.swing.JTextField jTextField9;
     // End of variables declaration//GEN-END:variables
 
+    
+    public void setBasketUi(){   
+        dataModel=new DefaultTableModel(data, COLUMN_NAMES);
+        jTable1.setModel(dataModel);   
+    }
+    
+    private void startAI() {
+        VoiceOrders.process("영업해요?");
+    }
 
+    public void basket(String productName, int addQuantity){
+        Integer amount=basket.get(productName);
+        if(amount==null){
+            amount=addQuantity;  
+        }else{
+            amount+=addQuantity;
+        }     
+ 
+        basket.put(productName, amount);
+        Enumeration<String> keys=basket.keys();
+        data=new String[basket.size()][2];
+        int i=0;
+        while(keys.hasMoreElements()){
+            String key=keys.nextElement();
+            Integer value=basket.get(key);
+            data[i][0]=key;
+            data[i][1]=value+"";                
+            i++;
+        }
+        dataModel=new DefaultTableModel(data, COLUMN_NAMES);
+        jTable1.setModel(dataModel);
 
+    }
+    
+    private void reset(){
+        // 주문 초기화
+         String [][]data={{"",""}};
+         dataModel=new DefaultTableModel(data, COLUMN_NAMES);
+         jTable1.setModel(dataModel); 
+         basket=new Hashtable();
+    }
+    
+    /** 서버로 주문 전송*/
+    private void order(){
+        try {     
+            System.out.println(apiURL);
+            URL url = new URL(apiURL);
+            HttpURLConnection con = (HttpURLConnection)url.openConnection();
+            con.setRequestMethod("POST");
+            con.setRequestProperty("Content-Type", "application/json;charset=utf-8");
+            con.setRequestProperty("Accept", "application/json;charset=utf-8");
+            con.setDoOutput(true);            
+          
+            Enumeration<String> keys=basket.keys();
+            JSONArray array=new JSONArray();
+            while(keys.hasMoreElements()){
+                String product_name=keys.nextElement();
+                String quantity=basket.get(product_name)+"";
+                JSONObject o=new JSONObject();
+                o.put("name",URLEncoder.encode(product_name, "UTF-8"));
+                o.put("quantity", quantity);
+                array.put(o);
+            }          
+            String product_str=array.toString();
+            //System.out.println(product_str);
+            
+            BufferedWriter wr = new BufferedWriter(new OutputStreamWriter(con.getOutputStream()));          
+            wr.write(product_str);                
+            
+            wr.flush();
+            wr.close();
+            int responseCode = con.getResponseCode();
+            BufferedReader br = null;
+            if(responseCode==200) { // 정상 처리
+                br = new BufferedReader(new InputStreamReader(con.getInputStream(),"UTF-8"));
+                StringBuffer response = new StringBuffer();
+                String inputLine="";
+                while ((inputLine = br.readLine()) != null) {
+                    response.append(inputLine);
+                }
+                br.close();
+                JSONObject o=new JSONObject(response.toString());
+                Object order_group_no=o.get("order_group_no");
+                JOptionPane.showMessageDialog(this, "주문이 완료되었습니다.\n주문 번호 : "+order_group_no);
+            }else{
+                JOptionPane.showMessageDialog(this, "죄송합니다. 주문 오류입니다. 다시 주문해주세요 ^^;");
+            }
+            
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+    
+    private void initFX() {
+	JFrame frame = new JFrame("FX");
+	//frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+	frame.getContentPane().setLayout(null);
+	final JButton jButton = new JButton("취소");
+	fxPanel = new JFXPanel();
+	frame.add(jButton);
+	frame.add(fxPanel);
+	//frame.setVisible(true);
+	jButton.setSize(new Dimension(200, 27));
+	fxPanel.setSize(new Dimension(300, 300));
+	fxPanel.setLocation(new Point(0, 27));
+	frame.getContentPane().setPreferredSize(new Dimension(300, 327));
+	frame.pack();
+	frame.setResizable(false);
+    }
+    
+    private void initAndLoadWebView(final JFXPanel fxPanel) {
+	Group group = new Group();
+	Scene scene = new Scene(group);
+	fxPanel.setScene(scene);
+	WebView webView = new WebView();
+	group.getChildren().add(webView);
+	webView.setMinSize(300, 300);
+	webView.setMaxSize(300, 300);
+	WebEngine webEngine = webView.getEngine();
 
+	webEngine.load("file:///D:/tool/AI_Cafe_Maven/index.html");
 
+    }   
+
+     class MyWorker extends SwingWorker{           
+            @Override
+            public String doInBackground() {   
+                String stt_msg=stt.process();                       
+                String chatbotMessage=VoiceOrders.process(stt_msg);    
+                TTS.process(chatbotMessage);                             
+               
+                return "";
+            }
+
+            @Override
+            protected void done() {                
+                jLabel8.setIcon(new ImageIcon("img\\mic.png"));    
+                Platform.runLater(new Runnable() {
+                    public void run() {
+                            initAndLoadWebView(fxPanel);
+                    }
+                }); 
+//                System.out.println(VoiceOrders.flag +":"+ VoiceOrders.productList.size());
+//                if(VoiceOrders.flag &&  VoiceOrders.productList.size()>0){
+//                    ProductVO p=VoiceOrders.productList.get(0);
+//                    System.out.println(p);
+//                    String data[][]={{p.getProduct_name(),p.getQuantity()+""}};
+//                    dataModel=new DefaultTableModel(data, COLUMN_NAMES);
+//                    jTable1.setModel(dataModel);
+//                }
+            }
+        }
 
 }
